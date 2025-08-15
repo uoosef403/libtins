@@ -93,34 +93,25 @@ INCLUDE(ExternalProject)
 # Compilation options
 # *******************
 
-# Always check for C++ features
-INCLUDE(CheckCXXFeatures)
-
-IF(HAS_GCC_BUILTIN_SWAP)
-    SET(TINS_HAVE_GCC_BUILTIN_SWAP ON)
-ENDIF()
-
 # C++11 support
-OPTION(LIBTINS_ENABLE_CXX11 "Compile libtins with c++11 features" ON)
-IF(LIBTINS_ENABLE_CXX11)
-    # We only use declval and decltype on gcc/clang as VC fails to build that code,
-    # at least on VC2013
-    IF(HAS_CXX11_RVALUE_REFERENCES AND HAS_CXX11_FUNCTIONAL AND HAS_CXX11_CHRONO AND
-       HAS_CXX11_NOEXCEPT AND ((HAS_CXX11_DECLVAL AND HAS_CXX11_DECLTYPE) OR MSVC))
-        SET(TINS_HAVE_CXX11 ON)
-        MESSAGE(STATUS "Enabling C++11 features")
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX11_COMPILER_FLAGS}")
-    ELSE()
-        MESSAGE(WARNING "The compiler doesn't support the necessary C++11 features. "
-                        "Disabling C++11 on this build")
-    ENDIF()
-ELSE(LIBTINS_ENABLE_CXX11)
-    MESSAGE(
-        WARNING
-        "Disabling C++11 features. Use LIBTINS_ENABLE_CXX11=1 to enable them. "
-        "Unless you are using an old compiler, you should enable this option, "
-        "as it increases the library's performance")
-ENDIF(LIBTINS_ENABLE_CXX11)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# This tells the library's C++ source code that C++11 features are available,
+# which is required for its internal #ifdefs to work correctly.
+set(TINS_HAVE_CXX11 ON)
+
+IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    # This feature is still checked separately.
+    include(CheckCXXSourceCompiles)
+    check_cxx_source_compiles("
+        #include <utility>
+        int main() { int i = 1, j = 2; std::swap(i, j); return 0; }
+    " HAS_GCC_BUILTIN_SWAP)
+    if(HAS_GCC_BUILTIN_SWAP)
+        set(TINS_HAVE_GCC_BUILTIN_SWAP ON)
+    endif()
+ENDIF()
 
 # IEEE 802.11 and WPA2 decryption support
 OPTION(LIBTINS_ENABLE_DOT11 "Compile libtins with IEEE 802.11 support" ON)
